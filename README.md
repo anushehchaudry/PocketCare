@@ -5,5 +5,7 @@
 - Course Syllabus (accurate assignment deadlines and schedule): https://docs.google.com/spreadsheets/d/1Y5Lcy-f3GsL_aUVHTDTYkmbaJQqK7sEhrNU9xM57UpQ/edit?usp=sharing
 
 Neha Vinjapuri
+
 Sarah Barragan
+
 Anusheh Chaudry
