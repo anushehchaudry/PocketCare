@@ -9,3 +9,5 @@ Neha Vinjapuri
 Sarah Barragan
 
 Anusheh Chaudry
+
+Aakriti Lakshmanan
