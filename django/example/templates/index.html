@@ -1,0 +1,20 @@
+<!-- example/templates/index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Medical Bill Breakdown</title>
+  </head>
+  <body>
+    <h1>Medical Bill Breakdown</h1>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="upload" />
+      <button type="submit">Upload</button>
+    </form>
+    {% if file_url %}
+    <p>
+      File uploaded successfully: <a href="{{ file_url }}">{{ file_url }}</a>
+    </p>
+    {% endif %}
+  </body>
+</html>
