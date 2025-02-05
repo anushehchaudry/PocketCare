@@ -1,16 +1,12 @@
 # example/views.py
-from datetime import datetime
-
-from django.http import HttpResponse
+from django.shortcuts import render
+from django.core.files.storage import FileSystemStorage
 
 def index(request):
-    now = datetime.now()
-    html = f'''
-    <html>
-        <body>
-            <h1>Hello from Vercel!</h1>
-            <p>The current time is { now }.</p>
-        </body>
-    </html>
-    '''
-    return HttpResponse(html)
+    if request.method == 'POST' and request.FILES['upload']:
+        upload = request.FILES['upload']
+        fss = FileSystemStorage()
+        file = fss.save(upload.name, upload)
+        file_url = fss.url(file)
+        return render(request, 'index.html', {'file_url': file_url})
+    return render(request, 'index.html')
