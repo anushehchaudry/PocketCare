@@ -2,6 +2,7 @@ from google.cloud import documentai
 from google.cloud.documentai_toolbox import document as doc_toolbox
 import environ
 from google.oauth2 import service_account
+import google.generativeai as genai
 
 env = environ.Env()
 environ.Env.read_env()
@@ -11,6 +12,45 @@ PROJECT_ID = env('PROJECT_ID')
 LOCATION = env('LOCATION')
 PROCESSOR_ID = env('PROCESSOR_ID')
 MIME_TYPE = env('MIME_TYPE', default='application/pdf')
+GEMINI_API_KEY = env('GEMINI_API_KEY')
+
+def send_to_gemini(formatted_text, user_question):
+    """
+    Send formatted text and user question to Gemini API using the official Python client
+    
+    Args:
+        formatted_text (str): The formatted text from the document
+        user_question (str): The user's question about the document
+        api_key (str): Your Gemini API key
+        
+    Returns:
+        str: Gemini's response
+    """
+    try:
+        # Configure the Gemini API
+        genai.configure(api_key=GEMINI_API_KEY)
+        
+        # Initialize the model
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Construct the prompt
+        prompt = f"""Context:
+{formatted_text}
+
+Question:
+{user_question}
+
+Please analyze the context and answer the question."""
+        
+        # Generate response
+        print("rn sedning")
+        response = model.generate_content(prompt)
+        print("gemini has responded")
+        return response.text
+        
+    except Exception as e:
+        raise Exception(f"Error communicating with Gemini API: {str(e)}")
+
 
 def process_document_ai(file_path):
     """

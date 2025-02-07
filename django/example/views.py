@@ -1,12 +1,13 @@
-# example/views.py
 from django.shortcuts import render
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
-from example.functions import process_document_ai, format_document_content
+from example.functions import process_document_ai, format_document_content, send_to_gemini
 import os
+
 
 def index(request):
     print("Function started")
+    print(request.POST)
     if request.method == 'POST' and request.FILES.get('upload'):
         print("hello, made it here")
         uploaded_file = request.FILES['upload']
@@ -20,9 +21,16 @@ def index(request):
             doc = process_document_ai(file_path)
             print("now here")
             formatted_content = format_document_content(doc)
-            
+            user_text = request.POST.get('user_text', '')
+
             file_url = fs.url(filename)
-            print(formatted_content)
+
+            gemini_response = None
+            if user_text:
+                print("sending to gemini")
+                gemini_response = send_to_gemini(formatted_content, user_text)
+            
+            print(gemini_response)
             
             return render(request, 'index.html', {
                 'file_url': file_url,
