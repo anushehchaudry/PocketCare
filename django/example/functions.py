@@ -2,6 +2,9 @@ from google.cloud import documentai
 from google.cloud.documentai_toolbox import document as doc_toolbox
 import environ
 from google.oauth2 import service_account
+from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_anonymizer import AnonymizerEngine
+from presidio_anonymizer.entities import OperatorConfig
 import google.generativeai as genai
 
 env = environ.Env()
@@ -14,6 +17,158 @@ PROCESSOR_ID = env('PROCESSOR_ID')
 MIME_TYPE = env('MIME_TYPE', default='application/pdf')
 GEMINI_API_KEY = env('GEMINI_API_KEY')
 
+
+class EnhancedHIPAADeidentifier:
+    def __init__(self):
+        self.analyzer = AnalyzerEngine()
+        self.anonymizer = AnonymizerEngine()
+        
+        self._add_custom_recognizers()
+
+    def _add_custom_recognizers(self):
+        account_pattern = Pattern(
+            name="account_number",
+            regex=r"\b\d{8,17}\b",
+            score=0.75
+        )
+        account_recognizer = PatternRecognizer(
+            supported_entity="ACCOUNT_NUMBER",
+            patterns=[account_pattern]
+        )
+
+        license_pattern = Pattern(
+            name="medical_license",
+            regex=r"\b[A-Z]\d{6}\b",  
+            score=0.75
+        )
+        license_recognizer = PatternRecognizer(
+            supported_entity="LICENSE_NUMBER",
+            patterns=[license_pattern]
+        )
+
+        vin_pattern = Pattern(
+            name="vin",
+            regex=r"\b[A-HJ-NPR-Z0-9]{17}\b",
+            score=0.75
+        )
+        vin_recognizer = PatternRecognizer(
+            supported_entity="VEHICLE_ID",
+            patterns=[vin_pattern]
+        )
+
+        age_pattern = Pattern(
+            name="age_over_89",
+            regex=r"\b(9\d|1[0-9]\d)\s*(years?\s*(old|of\s*age)?|yo)\b",
+            score=0.75
+        )
+        age_recognizer = PatternRecognizer(
+            supported_entity="AGE_OVER_89",
+            patterns=[age_pattern]
+        )
+
+        fax_pattern = Pattern(
+            name="fax_number",
+            regex=r"\b(Fax|FAX|fax):\s*\+?\d{1,3}[-\s]?\d{3}[-\s]?\d{4}\b",
+            score=0.75
+        )
+        fax_recognizer = PatternRecognizer(
+            supported_entity="FAX_NUMBER",
+            patterns=[fax_pattern]
+        )
+
+        self.analyzer.registry.add_recognizer(account_recognizer)
+        self.analyzer.registry.add_recognizer(license_recognizer)
+        self.analyzer.registry.add_recognizer(vin_recognizer)
+        self.analyzer.registry.add_recognizer(age_recognizer)
+        self.analyzer.registry.add_recognizer(fax_recognizer)
+
+    def deidentify(self, text):
+        entities = [
+            "PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", 
+            "US_SSN", "DATE_TIME", "URL", "IP_ADDRESS",
+            "LOCATION", "MEDICAL_LICENSE", "ACCOUNT_NUMBER",
+            "LICENSE_NUMBER", "VEHICLE_ID", "AGE_OVER_89",
+            "FAX_NUMBER"
+        ]
+
+        results = self.analyzer.analyze(
+            text=text,
+            entities=entities,
+            language='en'
+        )
+
+        operators = {
+    "PERSON": OperatorConfig("mask" , {
+        "masking_char": "#",
+        "chars_to_mask": 10,
+        "from_end": False
+    }), 
+    "PHONE_NUMBER": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 10,
+        "from_end": False
+    }),
+    "EMAIL_ADDRESS": OperatorConfig("mask", {
+        "masking_char": "*",
+        "chars_to_mask": 100,
+        "from_end": False
+    }),
+    "US_SSN": OperatorConfig("mask", {
+        "masking_char": "X",
+        "chars_to_mask": 9,
+        "from_end": False
+    }),
+    "DATE_TIME": OperatorConfig("replace", {"new_value": "<DATE>"}),
+    "URL": OperatorConfig("mask", {
+        "masking_char": "*",
+        "chars_to_mask": 100,
+        "from_end": False
+    }),
+    "IP_ADDRESS": OperatorConfig("mask", {
+        "masking_char": "*",
+        "chars_to_mask": 15,
+        "from_end": False
+    }),
+    "LOCATION": OperatorConfig("replace", {"new_value": "<LOCATION>"}),
+    "MEDICAL_LICENSE": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 20,
+        "from_end": False
+    }),
+    "ACCOUNT_NUMBER": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 20,
+        "from_end": False
+    }),
+    "LICENSE_NUMBER": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 20,
+        "from_end": False
+    }),
+    "VEHICLE_ID": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 17,
+        "from_end": False
+    }),
+    "AGE_OVER_89": OperatorConfig("replace", {"new_value": "89+"}),
+    "FAX_NUMBER": OperatorConfig("mask", {
+        "masking_char": "#",
+        "chars_to_mask": 10,
+        "from_end": False
+    })
+}
+
+        anonymized = self.anonymizer.anonymize(
+            text=text,
+            analyzer_results=results,
+            operators=operators,
+        
+        )
+
+        return anonymized.text
+    
+DEIDENTIFIER = EnhancedHIPAADeidentifier()
+    
 def send_to_gemini(formatted_text, user_question):
     """
     Send formatted text and user question to Gemini API using the official Python client
@@ -32,6 +187,10 @@ def send_to_gemini(formatted_text, user_question):
         
         # Initialize the model
         model = genai.GenerativeModel('gemini-1.5-flash')
+
+        #deidentify the text
+        formatted_text = DEIDENTIFIER.deidentify(formatted_text)
+        print(formatted_text)
         
         # Construct the prompt
         prompt = f"""Context:
@@ -43,9 +202,9 @@ Question:
 Please analyze the context and answer the question."""
         
         # Generate response
-        print("rn sedning")
+        print("Sending Information")
         response = model.generate_content(prompt)
-        print("gemini has responded")
+        print("Gemini has Responded")
         return response.text
         
     except Exception as e:
