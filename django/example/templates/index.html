@@ -71,5 +71,6 @@
     {% endif %} {% if user_text %}
     <p><strong>You entered: {{ user_text }}</strong></p>
     {% endif %}
+    <p><a href="{% url 'logout' %}">Logout</a></p>
   </body>
 </html>
