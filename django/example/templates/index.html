@@ -41,6 +41,21 @@
       button:hover {
         background-color: #0056b3;
       }
+      .response-box {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .error {
+        color: #dc3545;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #dc3545;
+        border-radius: 5px;
+        background-color: #f8d7da;
+      }
     </style>
   </head>
   <body>
@@ -61,16 +76,31 @@
       ></textarea>
       <button type="submit">Submit</button>
     </form>
+
+    {% if error %}
+    <div class="error">
+      {{ error }}
+    </div>
+    {% endif %}
+
     {% if file_url %}
     <p>
-      <strong
-        >File uploaded successfully:
-        <a href="{{ file_url }}">{{ file_url }}</a></strong
-      >
+      <strong>File uploaded successfully: <a href="{{ file_url }}">{{ file_url }}</a></strong>
     </p>
-    {% endif %} {% if user_text %}
-    <p><strong>You entered: {{ user_text }}</strong></p>
     {% endif %}
+
+    {% if user_text %}
+    <div class="response-box">
+      <h3>Your Question:</h3>
+      <p>{{ user_text }}</p>
+      
+      {% if gemini_response %}
+      <h3>Analysis:</h3>
+      <p style="white-space: pre-wrap;">{{ gemini_response }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <p><a href="{% url 'logout' %}">Logout</a></p>
   </body>
 </html>
