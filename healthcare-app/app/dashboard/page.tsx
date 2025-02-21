@@ -6,19 +6,42 @@ import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { FileText, Activity, Files, ArrowLeft, UserCircle } from "lucide-react"
+import { checkQuestionnaireStatus } from "@/lib/api"
 
 export default function DashboardPage() {
   const [isVisible, setIsVisible] = useState(false)
+  const [userName, setUserName] = useState<string>("")
   const searchParams = useSearchParams()
-  const name = searchParams.get("name") || "User"
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(true)
     }, 100)
 
+    // Get name from either URL or questionnaire response
+    const fetchUserName = async () => {
+      const nameFromUrl = searchParams.get("name")
+      if (nameFromUrl) {
+        setUserName(nameFromUrl)
+        return
+      }
+
+      try {
+        const result = await checkQuestionnaireStatus()
+        if (result.status === 'success' && result.data?.hasCompleted) {
+          setUserName(result.data.name || "User")
+        } else {
+          setUserName("User")
+        }
+      } catch (err) {
+        console.error('Error fetching user name:', err)
+        setUserName("User")
+      }
+    }
+
+    fetchUserName()
     return () => clearTimeout(timer)
-  }, [])
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,7 +67,7 @@ export default function DashboardPage() {
           {/* Welcome Card */}
           <Card className="bg-primary text-primary-foreground">
             <CardContent className="p-6">
-              <h2 className="text-xl font-medium mb-1">Hi {name},</h2>
+              <h2 className="text-xl font-medium mb-1">Hi {userName},</h2>
               <p className="text-primary-foreground/90">Welcome to your healthcare dashboard</p>
             </CardContent>
           </Card>
@@ -98,4 +121,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

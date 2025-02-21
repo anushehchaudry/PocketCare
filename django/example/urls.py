@@ -1,13 +1,17 @@
 # example/urls.py
 from django.urls import path
-from example.views import index, register, user_login, user_logout, profile, compare_documents
-
+from example.views import (
+    api_login, api_register, api_logout,
+    api_analyze_bill, api_compare_insurance,
+    save_questionnaire, check_questionnaire_status
+)
 
 urlpatterns = [
-    path('register/', register, name='register'),
-    path('login/', user_login, name='login'),
-    path('logout/', user_logout, name='logout'),
-    path('profile/', profile, name='profile'),
-    path('compare/', compare_documents, name='compare'),
-    path('', index, name='index'),
+    path('api/login/', api_login, name='api_login'),
+    path('api/register/', api_register, name='api_register'),
+    path('api/logout/', api_logout, name='api_logout'),
+    path('api/analyze-bill/', api_analyze_bill, name='api_analyze_bill'),
+    path('api/compare-insurance/', api_compare_insurance, name='api_compare_insurance'),
+    path('api/save-questionnaire/', save_questionnaire, name='save_questionnaire'),
+    path('api/check-questionnaire/', check_questionnaire_status, name='check_questionnaire_status'),
 ]
