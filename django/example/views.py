@@ -22,9 +22,7 @@ from django.middleware.csrf import get_token
 def api_login(request):
     try:
         data = request.data
-        username = data.get('email')  # Using email as username
-        password = data.get('password')
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, username=data.get('email'), password=data.get('password'))
         if user is not None:
             login(request, user)
             response = JsonResponse({
@@ -50,9 +48,9 @@ def api_login(request):
 def api_register(request):
     try:
         form_data = {
-            'username': request.data.get('email'),  # Using email as username
-            'password1': request.data.get('password'),  # First password field
-            'password2': request.data.get('confirmPassword'),  # Confirmation password
+            'username': request.data.get('email'), 
+            'password1': request.data.get('password'), 
+            'password2': request.data.get('confirmPassword'), 
         }
         form = UserCreationForm(form_data)
         if form.is_valid():
@@ -84,7 +82,6 @@ def api_register(request):
                 'errors': error_messages
             }, status=400)
     except Exception as e:
-        print(str(e))  # For debugging
         return JsonResponse({
             'status': 'error',
             'message': 'Invalid request data',
@@ -211,9 +208,7 @@ Focus on providing a clear, structured comparison that highlights the key differ
 def save_questionnaire(request):
     try:
         data = request.data
-        print("Received data:", data)
-        print("Current user:", request.user)
-        
+      
         try:
             response = QuestionnaireResponse.objects.create(
                 user=request.user,
@@ -222,14 +217,12 @@ def save_questionnaire(request):
                 pre_existing_conditions=data.get('pre_existing_conditions', ''),
                 overall_health=data.get('overall_health', '')
             )
-            print("Created questionnaire response:", response)
             
             return JsonResponse({
                 'status': 'success',
                 'message': 'Questionnaire saved successfully'
             })
         except Exception as model_error:
-            print("Error creating questionnaire:", str(model_error))
             return JsonResponse({
                 'status': 'error',
                 'message': f'Failed to create questionnaire: {str(model_error)}',
@@ -237,7 +230,6 @@ def save_questionnaire(request):
             }, status=500)
             
     except Exception as e:
-        print("Outer error:", str(e))
         return JsonResponse({
             'status': 'error',
             'message': 'Failed to process request',
@@ -248,11 +240,8 @@ def save_questionnaire(request):
 @permission_classes([IsAuthenticated])
 def check_questionnaire_status(request):
     try:
-        print(f"Checking questionnaire status for user: {request.user.id}")
         response = QuestionnaireResponse.objects.filter(user=request.user.id).first()
-        
         if response:
-            print(f"Found questionnaire response: {response}")
             return JsonResponse({
                 'status': 'success',
                 'hasCompleted': True,
@@ -264,7 +253,6 @@ def check_questionnaire_status(request):
                 }
             })
             
-        print("No questionnaire response found")
         return JsonResponse({
             'status': 'success',
             'hasCompleted': False,
