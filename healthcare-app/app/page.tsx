@@ -23,8 +23,7 @@ export default function LoginPage() {
     try {
       const result = await login(email, password)
       if (result.status === "success") {
-        router.refresh()
-        router.replace("/questionnaire")
+        router.push("/questionnaire")
       } else {
         setError(result.message || "Invalid email or password")
       }

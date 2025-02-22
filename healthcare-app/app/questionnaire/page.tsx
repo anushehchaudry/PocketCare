@@ -27,42 +27,21 @@ export default function QuestionnairePage() {
   const router = useRouter()
 
   useEffect(() => {
-    let mounted = true;
-
     const checkStatus = async () => {
       try {
-        // Ensure router is ready before making the request
-        router.refresh();
-        
         const result = await checkQuestionnaireStatus()
-        if (!mounted) return;
-
-        if (result.status === 'success') {
-          if (result.data?.hasCompleted) {
-            router.replace(`/dashboard?name=${encodeURIComponent(result.data.name)}`)
-            return;
-          }
-        } else {
-          // If unauthorized or error, redirect to login
-          router.replace('/')
-          return;
+        if (result.status === 'success' && result.data?.hasCompleted) {
+          router.replace(`/dashboard?name=${encodeURIComponent(result.data.name)}`)
+          return
         }
       } catch (err) {
-        if (!mounted) return;
         console.error('Error checking questionnaire status:', err)
-        router.replace('/')
       } finally {
-        if (mounted) {
-          setLoading(false)
-        }
+        setLoading(false)
       }
     }
     
     checkStatus()
-
-    return () => {
-      mounted = false
-    }
   }, [])
 
   if (loading) {
