@@ -9,32 +9,58 @@ interface ApiResponse {
   data?: any;
 }
 
-// Function to get CSRF token from cookies
+// Store CSRF token in memory
+let storedCsrfToken: string | null = null;
+
+// Function to get CSRF token from cookies or memory
 function getCsrfToken(): string | null {
+  if (storedCsrfToken) return storedCsrfToken;
+  
   const name = 'csrftoken';
-  let cookieValue = null;
   if (document.cookie && document.cookie !== '') {
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
       const cookie = cookies[i].trim();
       if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        storedCsrfToken = decodeURIComponent(cookie.substring(name.length + 1));
         break;
       }
     }
   }
-  return cookieValue;
+  return storedCsrfToken;
+}
+
+// Update stored CSRF token from response headers
+function updateCsrfToken(response: Response) {
+  const newToken = response.headers.get('X-CSRFToken');
+  if (newToken) {
+    storedCsrfToken = newToken;
+  }
+}
+
+// Base fetch function with auth credentials
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getCsrfToken();
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      ...options.headers,
+      'X-CSRFToken': token || '',
+    },
+  });
+  
+  updateCsrfToken(response);
+  return response;
 }
 
 export async function login(email: string, password: string): Promise<ApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/login/`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken() || '',
       },
-      credentials: 'include',
       body: JSON.stringify({ email, password }),
     });
 
@@ -61,13 +87,11 @@ export async function register(email: string, password: string, confirmPassword:
       };
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/register/`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/register/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken() || '',
       },
-      credentials: 'include',
       body: JSON.stringify({
         email: email,
         password: password,
@@ -94,12 +118,8 @@ export async function analyzeBill(file: File, question: string) {
   formData.append('file', file);
   formData.append('question', question);
 
-  const response = await fetch(`${API_BASE_URL}/api/analyze-bill/`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/api/analyze-bill/`, {
     method: 'POST',
-    headers: {
-      'X-CSRFToken': getCsrfToken() || '',
-    },
-    credentials: 'include',
     body: formData,
   });
   return response.json();
@@ -111,12 +131,8 @@ export async function compareInsurance(file1: File, file2: File, question: strin
   formData.append('file2', file2);
   formData.append('question', question);
 
-  const response = await fetch(`${API_BASE_URL}/api/compare-insurance/`, {
+  const response = await fetchWithAuth(`${API_BASE_URL}/api/compare-insurance/`, {
     method: 'POST',
-    headers: {
-      'X-CSRFToken': getCsrfToken() || '',
-    },
-    credentials: 'include',
     body: formData,
   });
   return response.json();
@@ -124,12 +140,8 @@ export async function compareInsurance(file1: File, file2: File, question: strin
 
 export async function logout(): Promise<ApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/logout/`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/logout/`, {
       method: 'POST',
-      headers: {
-        'X-CSRFToken': getCsrfToken() || '',
-      },
-      credentials: 'include',
     });
 
     const data = await response.json();
@@ -154,13 +166,11 @@ export interface QuestionnaireData {
 
 export async function saveQuestionnaire(data: QuestionnaireData): Promise<ApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/save-questionnaire/`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/save-questionnaire/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken() || '',
       },
-      credentials: 'include',
       body: JSON.stringify(data),
     });
 
@@ -179,12 +189,8 @@ export async function saveQuestionnaire(data: QuestionnaireData): Promise<ApiRes
 
 export async function checkQuestionnaireStatus(): Promise<ApiResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/check-questionnaire/`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/check-questionnaire/`, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        'X-CSRFToken': getCsrfToken() || '',
-      }
     });
 
     const data = await response.json();
