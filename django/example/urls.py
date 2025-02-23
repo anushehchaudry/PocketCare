@@ -3,7 +3,8 @@ from django.urls import path
 from example.views import (
     api_login, api_register, api_logout,
     api_analyze_bill, api_compare_insurance,
-    save_questionnaire, check_questionnaire_status
+    save_questionnaire, check_questionnaire_status, delete_profile,
+    update_profile,
 )
 
 urlpatterns = [
@@ -14,4 +15,6 @@ urlpatterns = [
     path('api/compare-insurance/', api_compare_insurance, name='api_compare_insurance'),
     path('api/save-questionnaire/', save_questionnaire, name='save_questionnaire'),
     path('api/check-questionnaire/', check_questionnaire_status, name='check_questionnaire_status'),
+    path('api/delete-profile/', delete_profile, name='delete_profile'),
+    path('api/update-profile/', update_profile, name='update_profile'),
 ]
