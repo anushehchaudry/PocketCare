@@ -264,36 +264,3 @@ def check_questionnaire_status(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-    
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_profile(request):
-    try:
-        user = request.user
-        # Delete questionnaire responses
-        QuestionnaireResponse.objects.filter(user=user).delete()
-        # Delete user profile
-        user.delete()
-        return Response({'status': 'success', 'message': 'Profile deleted successfully'})
-    except Exception as e:
-        return Response({'status': 'error', 'message': str(e)}, status=500)
-    
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def update_profile(request):
-    try:
-        user = request.user
-        data = request.data
-        # Update questionnaire responses
-        response, created = QuestionnaireResponse.objects.update_or_create(
-            user=user,
-            defaults={
-                'name': data.get('name', ''),
-                'age': int(data.get('age', 0)),
-                'pre_existing_conditions': data.get('pre_existing_conditions', ''),
-                'overall_health': data.get('overall_health', '')
-            }
-        )
-        return Response({'status': 'success', 'message': 'Profile updated successfully'})
-    except Exception as e:
-        return Response({'status': 'error', 'message': str(e)}, status=500)
