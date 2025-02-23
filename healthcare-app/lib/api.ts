@@ -1,24 +1,6 @@
-import axios from 'axios';
+// API client for interacting with the Django backend
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,  // This is important for cookies
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add request interceptor to include CSRF token
-api.interceptors.request.use((config) => {
-  const token = getCsrfToken();
-  if (token) {
-    config.headers['X-CSRFToken'] = token;
-  }
-  return config;
-});
 
 interface ApiResponse {
   status: 'success' | 'error';
@@ -49,179 +31,46 @@ function getCsrfToken(): string | null {
 }
 
 // Update stored CSRF token from response headers
-function updateCsrfToken(response: any) {
-  const newToken = response.headers['x-csrftoken'];
+function updateCsrfToken(response: Response) {
+  const newToken = response.headers.get('X-CSRFToken');
   if (newToken) {
     storedCsrfToken = newToken;
   }
 }
 
-// Add response interceptor to update CSRF token
-api.interceptors.response.use(
-  (response) => {
-    updateCsrfToken(response);
-    return response;
-  },
-  (error) => {
-    if (error.response) {
-      updateCsrfToken(error.response);
-    }
-    return Promise.reject(error);
-  }
-);
+// Base fetch function with auth credentials
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getCsrfToken();
+  const response = await fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      ...options.headers,
+      'X-CSRFToken': token || '',
+    },
+  });
+  
+  updateCsrfToken(response);
+  return response;
+}
 
 export async function login(email: string, password: string): Promise<ApiResponse> {
   try {
-    const response = await api.post('/api/login/', { email, password });
-    updateCsrfToken(response);
-    return {
-      status: 'success',
-      message: response.data.message,
-      data: response.data.data,
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Invalid credentials',
-      };
-    }
-    return {
-      status: 'error',
-      message: 'Failed to connect to server',
-    };
-  }
-}
-
-export interface QuestionnaireData {
-  name: string;
-  age: number;
-  pre_existing_conditions: string;
-  overall_health: string;
-}
-
-export async function saveQuestionnaire(data: QuestionnaireData): Promise<ApiResponse> {
-  try {
-    const response = await api.post('/api/save-questionnaire/', data);
-    updateCsrfToken(response);
-    return {
-      status: 'success',
-      message: response.data.message,
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Failed to save questionnaire',
-      };
-    }
-    return {
-      status: 'error',
-      message: 'Failed to connect to server',
-    };
-  }
-}
-
-export async function checkQuestionnaireStatus(): Promise<ApiResponse> {
-  try {
-    const response = await api.get('/api/check-questionnaire/');
-    updateCsrfToken(response);
-    return {
-      status: 'success',
-      message: response.data.message || '',
-      data: {
-        hasCompleted: response.data.hasCompleted,
-        ...response.data.data
-      }
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      // If unauthorized, throw error to trigger redirect
-      if (error.response.status === 401) {
-        throw error;
-      }
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Failed to check status',
-      };
-    }
-    return {
-      status: 'error',
-      message: 'Failed to connect to server',
-    };
-  }
-}
-
-export async function analyzeBill(file: File, question: string): Promise<ApiResponse> {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('question', question);
-
-    const response = await api.post('/api/analyze-bill/', formData, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/login/`, {
+      method: 'POST',
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ email, password }),
     });
-    updateCsrfToken(response);
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Failed to analyze bill',
-      };
-    }
-    return {
-      status: 'error',
-      message: 'Failed to connect to server',
-    };
-  }
-}
 
-export async function compareInsurance(file1: File, file2: File, question: string): Promise<ApiResponse> {
-  try {
-    const formData = new FormData();
-    formData.append('file1', file1);
-    formData.append('file2', file2);
-    formData.append('question', question);
-
-    const response = await api.post('/api/compare-insurance/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    updateCsrfToken(response);
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Failed to compare insurance',
-      };
-    }
+    const data = await response.json();
     return {
-      status: 'error',
-      message: 'Failed to connect to server',
-    };
-  }
-}
-
-export async function logout(): Promise<ApiResponse> {
-  try {
-    const response = await api.post('/api/logout/');
-    updateCsrfToken(response);
-    return {
-      status: 'success',
-      message: response.data.message,
+      status: response.ok ? 'success' : 'error',
+      message: data.message,
+      data: data.data,
     };
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      return {
-        status: 'error',
-        message: error.response.data.message || 'Failed to logout',
-      };
-    }
     return {
       status: 'error',
       message: 'Failed to connect to server',
@@ -238,15 +87,21 @@ export async function register(email: string, password: string, confirmPassword:
       };
     }
 
-    const response = await api.post('/api/register/', {
-      email: email,
-      password: password,
-      confirmPassword: confirmPassword
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/register/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword
+      }),
     });
 
-    const data = response.data;
+    const data = await response.json();
     return {
-      status: response.status === 200 ? 'success' : 'error',
+      status: response.ok ? 'success' : 'error',
       message: data.message || 'Registration failed',
       errors: data.errors ? data.errors : undefined,
     };
@@ -254,6 +109,104 @@ export async function register(email: string, password: string, confirmPassword:
     return {
       status: 'error',
       message: 'Failed to connect to server',
+    };
+  }
+}
+
+export async function analyzeBill(file: File, question: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('question', question);
+
+  const response = await fetchWithAuth(`${API_BASE_URL}/api/analyze-bill/`, {
+    method: 'POST',
+    body: formData,
+  });
+  return response.json();
+}
+
+export async function compareInsurance(file1: File, file2: File, question: string) {
+  const formData = new FormData();
+  formData.append('file1', file1);
+  formData.append('file2', file2);
+  formData.append('question', question);
+
+  const response = await fetchWithAuth(`${API_BASE_URL}/api/compare-insurance/`, {
+    method: 'POST',
+    body: formData,
+  });
+  return response.json();
+}
+
+export async function logout(): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/logout/`, {
+      method: 'POST',
+    });
+
+    const data = await response.json();
+    return {
+      status: response.ok ? 'success' : 'error',
+      message: data.message,
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      message: 'Failed to connect to server',
+    };
+  }
+}
+
+export interface QuestionnaireData {
+  name: string;
+  age: number;
+  pre_existing_conditions: string;
+  overall_health: string;
+}
+
+export async function saveQuestionnaire(data: QuestionnaireData): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/save-questionnaire/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? 'success' : 'error',
+      message: responseData.message,
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      message: 'Failed to save questionnaire',
+    };
+  }
+}
+
+export async function checkQuestionnaireStatus(): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/check-questionnaire/`, {
+      method: 'GET',
+    });
+
+    const data = await response.json();
+    return {
+      status: response.ok ? 'success' : 'error',
+      message: data.message || '',
+      data: {
+        hasCompleted: data.hasCompleted,
+        ...data.data
+      }
+    };
+  } catch (error) {
+    console.error('Error checking questionnaire status:', error);
+    return {
+      status: 'error',
+      message: 'Failed to check questionnaire status'
     };
   }
 }
