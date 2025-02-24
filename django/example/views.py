@@ -264,3 +264,32 @@ def check_questionnaire_status(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    try:
+        data = request.data
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        if response:
+            response.name = data.get('name', response.name)
+            response.age = int(data.get('age', response.age))
+            response.pre_existing_conditions = data.get('pre_existing_conditions', response.pre_existing_conditions)
+            response.overall_health = data.get('overall_health', response.overall_health)
+            response.save()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Profile updated successfully'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Profile not found'
+            }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Failed to update profile',
+            'errors': [str(e)]
+        }, status=500)
