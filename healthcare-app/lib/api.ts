@@ -236,23 +236,28 @@ export async function checkQuestionnaireStatus(): Promise<ApiResponse> {
   }
 }
 
-export async function getUsername(): Promise<ApiResponse> {
+export async function updateProfile(data: any): Promise<ApiResponse> {
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/api/get-username/`, {
-      method: "GET",
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/update-profile/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
 
-    const data = await response.json();
+    const responseData = await response.json();
     return {
       status: response.ok ? "success" : "error",
-      message: data.message || "",
-      data: data.username,
+      message: responseData.message,
     };
   } catch (error) {
-    console.error("Error fetching username:", error);
     return {
       status: "error",
-      message: "Failed to fetch username",
+      message: "Failed to update profile",
     };
   }
 }
