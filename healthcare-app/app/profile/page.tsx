@@ -6,12 +6,17 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-import { checkQuestionnaireStatus, updateProfile } from "@/lib/api";
+import {
+  checkQuestionnaireStatus,
+  updateProfile,
+  deleteProfile,
+} from "@/lib/api";
 
 export default function ProfilePage() {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     age: "",
@@ -66,6 +71,19 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Error updating profile:", err);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    try {
+      const result = await deleteProfile();
+      if (result.status === "success") {
+        router.push("/"); // Redirect to the login page
+      } else {
+        console.error("Failed to delete profile:", result.message);
+      }
+    } catch (err) {
+      console.error("Error deleting profile:", err);
     }
   };
 
@@ -187,13 +205,44 @@ export default function ProfilePage() {
                       {profileData.overall_health}
                     </p>
                   </div>
-                  <Button onClick={() => setEditing(true)}>Edit</Button>
+                  <div className="flex justify-end gap-2">
+                    <Button onClick={() => setEditing(true)}>Edit</Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Confirm Deletion</h2>
+            <p className="mb-4">
+              Are you sure you want to delete your profile? This action cannot
+              be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteProfile}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

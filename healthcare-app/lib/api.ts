@@ -1,4 +1,4 @@
-// API client for interacting with the Django backend
+import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -27,6 +27,7 @@ function getCsrfToken(): string | null {
       }
     }
   }
+
   return storedCsrfToken;
 }
 
@@ -261,3 +262,23 @@ export async function updateProfile(data: any): Promise<ApiResponse> {
     };
   }
 }
+
+export const deleteProfile = async (): Promise<ApiResponse> => {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/delete-profile/`,
+      {
+        method: "POST",
+      }
+    );
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    console.error("Error deleting profile:", error);
+    return { status: "error", message: "Failed to delete profile" };
+  }
+};

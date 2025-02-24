@@ -293,3 +293,23 @@ def update_profile(request):
             'message': 'Failed to update profile',
             'errors': [str(e)]
         }, status=500)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def delete_profile(request):
+    try:
+        user = request.user
+        response = QuestionnaireResponse.objects.filter(user=user).first()
+        if response:
+            response.delete()
+        user.delete()  # Delete the user and their login information
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Profile and user deleted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Failed to delete profile',
+            'errors': [str(e)]
+        }, status=500)
