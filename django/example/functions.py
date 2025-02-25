@@ -6,7 +6,9 @@ from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 import google.generativeai as genai
+from django.core.signing import Signer
 
+signer = Signer()
 env = environ.Env()
 environ.Env.read_env()
 
@@ -183,6 +185,13 @@ def send_to_gemini(formatted_text, user_question, system_prompt):
         str: Gemini's response
     """
     try:
+        formatted_text = signer.unsign(formatted_text)
+        user_question = signer.unsign(user_question)
+    except:
+        raise Exception(f"Security Vulnerability Detected")
+    
+    try:
+        
         # Configure the Gemini API
         genai.configure(api_key=GEMINI_API_KEY)
         
