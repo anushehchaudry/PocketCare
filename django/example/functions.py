@@ -6,7 +6,9 @@ from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 import google.generativeai as genai
+from django.core.signing import Signer
 
+signer = Signer()
 env = environ.Env()
 environ.Env.read_env()
 
@@ -169,19 +171,27 @@ class EnhancedHIPAADeidentifier:
     
 DEIDENTIFIER = EnhancedHIPAADeidentifier()
     
-def send_to_gemini(formatted_text, user_question):
+def send_to_gemini(formatted_text, user_question, system_prompt):
     """
     Send formatted text and user question to Gemini API using the official Python client
     
     Args:
         formatted_text (str): The formatted text from the document
         user_question (str): The user's question about the document
+        system_prompt (str): The system prompt to guide the model's response
         api_key (str): Your Gemini API key
         
     Returns:
         str: Gemini's response
     """
     try:
+        formatted_text = signer.unsign(formatted_text)
+        user_question = signer.unsign(user_question)
+    except:
+        raise Exception(f"Security Vulnerability Detected")
+    
+    try:
+        
         # Configure the Gemini API
         genai.configure(api_key=GEMINI_API_KEY)
         
@@ -193,7 +203,8 @@ def send_to_gemini(formatted_text, user_question):
         print(formatted_text)
         
         # Construct the prompt
-        prompt = f"""Context:
+        prompt = f"""{system_prompt} 
+Context:
 {formatted_text}
 
 Question:
