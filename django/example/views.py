@@ -16,7 +16,14 @@ import json
 from django.http import JsonResponse
 from .models import QuestionnaireResponse  # Import the QuestionnaireResponse model
 from django.middleware.csrf import get_token
-    
+from django.views.decorators.csrf import ensure_csrf_cookie
+
+
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    return JsonResponse({"message": "CSRF cookie set"})
+
+@ensure_csrf_cookie
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def api_login(request):
@@ -120,11 +127,10 @@ def api_analyze_bill(request):
         
         doc = process_document_ai(file_path)
         formatted_content = format_document_content(doc)
-        user_question = request.data.get('question', '')
+        user_question = request.POST.get('question', '')
 
         signed_content = signer.sign(formatted_content)
         signed_question = signer.sign(user_question) if user_question else None
-
         analysis = None
         if user_question:
             analysis = send_to_gemini(signed_content, signed_question)

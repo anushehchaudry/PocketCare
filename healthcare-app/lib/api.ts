@@ -9,50 +9,38 @@ interface ApiResponse {
   data?: any;
 }
 
-// Store CSRF token in memory
-let storedCsrfToken: string | null = null;
-
-// Function to get CSRF token from cookies or memory
-function getCsrfToken(): string | null {
-  if (storedCsrfToken) return storedCsrfToken;
-  
-  const name = 'csrftoken';
-  if (document.cookie && document.cookie !== '') {
+function getCsrfTokenFromCookie(): string | null {
     const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        storedCsrfToken = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
+    for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+        return decodeURIComponent(value);
+        }
     }
-  }
-  return storedCsrfToken;
+    return null;
 }
-
-// Update stored CSRF token from response headers
-function updateCsrfToken(response: Response) {
-  const newToken = response.headers.get('X-CSRFToken');
-  if (newToken) {
-    storedCsrfToken = newToken;
-  }
-}
-
-// Base fetch function with auth credentials
+    
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = getCsrfToken();
-  const response = await fetch(url, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      ...options.headers,
-      'X-CSRFToken': token || '',
-    },
-  });
+    const csrfToken = getCsrfTokenFromCookie();
+    
+    // Create a new headers object that we can manipulate
+    const headers = new Headers(options.headers);
+    
+    // Add CSRF token
+    headers.set('X-CSRFToken', csrfToken || '');
+    
+    // Only set Content-Type for JSON bodies, not FormData
+    if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+    
+    return fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers,
+    });
+  }
   
-  updateCsrfToken(response);
-  return response;
-}
 
 export async function login(email: string, password: string): Promise<ApiResponse> {
   try {
