@@ -1,9 +1,9 @@
 // API client for interacting with the Django backend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface ApiResponse {
-  status: 'success' | 'error';
+  status: "success" | "error";
   message: string;
   errors?: string[];
   data?: any;
@@ -29,7 +29,6 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     // Add CSRF token
     headers.set('X-CSRFToken', csrfToken || '');
     
-    // Only set Content-Type for JSON bodies, not FormData
     if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
@@ -42,105 +41,119 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
   }
   
 
-export async function login(email: string, password: string): Promise<ApiResponse> {
+export async function login(
+  email: string,
+  password: string
+): Promise<ApiResponse> {
   try {
     const response = await fetchWithAuth(`${API_BASE_URL}/api/login/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
     return {
-      status: response.ok ? 'success' : 'error',
+      status: response.ok ? "success" : "error",
       message: data.message,
       data: data.data,
     };
   } catch (error) {
     return {
-      status: 'error',
-      message: 'Failed to connect to server',
+      status: "error",
+      message: "Failed to connect to server",
     };
   }
 }
 
-export async function register(email: string, password: string, confirmPassword: string): Promise<ApiResponse> {
+export async function register(
+  email: string,
+  password: string,
+  confirmPassword: string
+): Promise<ApiResponse> {
   try {
     if (password !== confirmPassword) {
       return {
-        status: 'error',
-        message: 'Passwords do not match',
+        status: "error",
+        message: "Passwords do not match",
       };
     }
 
     const response = await fetchWithAuth(`${API_BASE_URL}/api/register/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         email: email,
         password: password,
-        confirmPassword: confirmPassword
+        confirmPassword: confirmPassword,
       }),
     });
 
     const data = await response.json();
     return {
-      status: response.ok ? 'success' : 'error',
-      message: data.message || 'Registration failed',
+      status: response.ok ? "success" : "error",
+      message: data.message || "Registration failed",
       errors: data.errors ? data.errors : undefined,
     };
   } catch (error) {
     return {
-      status: 'error',
-      message: 'Failed to connect to server',
+      status: "error",
+      message: "Failed to connect to server",
     };
   }
 }
 
 export async function analyzeBill(file: File, question: string) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('question', question);
+  formData.append("file", file);
+  formData.append("question", question);
 
   const response = await fetchWithAuth(`${API_BASE_URL}/api/analyze-bill/`, {
-    method: 'POST',
+    method: "POST",
     body: formData,
   });
   return response.json();
 }
 
-export async function compareInsurance(file1: File, file2: File, question: string) {
+export async function compareInsurance(
+  file1: File,
+  file2: File,
+  question: string
+) {
   const formData = new FormData();
-  formData.append('file1', file1);
-  formData.append('file2', file2);
-  formData.append('question', question);
+  formData.append("file1", file1);
+  formData.append("file2", file2);
+  formData.append("question", question);
 
-  const response = await fetchWithAuth(`${API_BASE_URL}/api/compare-insurance/`, {
-    method: 'POST',
-    body: formData,
-  });
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/api/compare-insurance/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
   return response.json();
 }
 
 export async function logout(): Promise<ApiResponse> {
   try {
     const response = await fetchWithAuth(`${API_BASE_URL}/api/logout/`, {
-      method: 'POST',
+      method: "POST",
     });
 
     const data = await response.json();
     return {
-      status: response.ok ? 'success' : 'error',
+      status: response.ok ? "success" : "error",
       message: data.message,
     };
   } catch (error) {
     return {
-      status: 'error',
-      message: 'Failed to connect to server',
+      status: "error",
+      message: "Failed to connect to server",
     };
   }
 }
@@ -152,49 +165,83 @@ export interface QuestionnaireData {
   overall_health: string;
 }
 
-export async function saveQuestionnaire(data: QuestionnaireData): Promise<ApiResponse> {
+export async function saveQuestionnaire(
+  data: QuestionnaireData
+): Promise<ApiResponse> {
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/api/save-questionnaire/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/save-questionnaire/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
 
     const responseData = await response.json();
     return {
-      status: response.ok ? 'success' : 'error',
+      status: response.ok ? "success" : "error",
       message: responseData.message,
     };
   } catch (error) {
     return {
-      status: 'error',
-      message: 'Failed to save questionnaire',
+      status: "error",
+      message: "Failed to save questionnaire",
     };
   }
 }
 
 export async function checkQuestionnaireStatus(): Promise<ApiResponse> {
   try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/api/check-questionnaire/`, {
-      method: 'GET',
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/check-questionnaire/`,
+      {
+        method: "GET",
+      }
+    );
 
     const data = await response.json();
     return {
-      status: response.ok ? 'success' : 'error',
-      message: data.message || '',
+      status: response.ok ? "success" : "error",
+      message: data.message || "",
       data: {
         hasCompleted: data.hasCompleted,
-        ...data.data
-      }
+        ...data.data,
+      },
     };
   } catch (error) {
-    console.error('Error checking questionnaire status:', error);
+    console.error("Error checking questionnaire status:", error);
     return {
-      status: 'error',
-      message: 'Failed to check questionnaire status'
+      status: "error",
+      message: "Failed to check questionnaire status",
+    };
+  }
+}
+
+export async function updateProfile(data: any): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/update-profile/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: "Failed to update profile",
     };
   }
 }

@@ -133,7 +133,27 @@ def api_analyze_bill(request):
         signed_question = signer.sign(user_question) if user_question else None
         analysis = None
         if user_question:
-            analysis = send_to_gemini(signed_content, signed_question)
+            system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of their medical bills and medical insurance. You have been provided with the full text of the user’s uploaded medical bill as context. Your role is to carefully analyze this context and answer any questions strictly related to the medical bill or medical insurance.
+
+When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.
+
+If answering questions about bill details, charges, insurance information, or any related topics, please provide a thorough yet warm explanation using the context provided below that makes the user feel understood and reassured.
+
+Here is an example of the tone you should have when answering questions: Hi there! I understand that medical bills can be confusing, so let’s break this down in a friendly, straightforward way:
+Your total charges came to $627.00. Fortunately, you received $313.50 in adjustments (likely due to discounts or write-offs), which brings your current balance down to $313.50.
+Let’s look at the details:
+Visit 1:
+You had an evaluation and management appointment. The original charge was $157.00, but with an uninsured discount applied, it was reduced to $78.50.
+Visit 2:
+This visit included an evaluation, management, and a Pap smear. The initial charge was $470.00. After adjustments of $172.50 and $62.50, the remaining balance for this visit came to $235.00.
+When you add the balances from both visits ($78.50 + $235.00), you get the total amount due of $313.50.
+If you have any questions or need more details, your bill also includes contact information via phone, online, or mail. I’m here to help if you need any further clarification!
+
+
+If the question is not related to the medical bill or medical insurance, please respond with:
+Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding your medical bill or insurance details.
+"""
+            analysis = send_to_gemini(signed_content, signed_question, system_prompt)
         
         storage.delete(path)
         
@@ -192,7 +212,25 @@ Focus on providing a clear, structured comparison that highlights the key differ
         signed_content = signer.sign(combined_content)
         signed_question = signer.sign(question)
         
-        comparison = send_to_gemini(signed_content, signed_question)
+        system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of insurance plans and summaries of benefits. You have been provided with the full text of two insurance documents as context. Your role is to carefully analyze this context and answer any questions strictly related to the details, differences, or comparisons between these two insurance plans.
+
+When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.
+
+If the user’s question pertains to coverage details, deductibles, benefits, policy differences, or any related topics within the documents, provide a thorough yet warm explanation using the context provided below that makes the user feel understood and reassured.
+
+Here is an example of the tone you should have when answering questions: Hi there! I understand that medical bills can be confusing, so let’s break this down in a friendly, straightforward way:
+Your total charges came to $627.00. Fortunately, you received $313.50 in adjustments (likely due to discounts or write-offs), which brings your current balance down to $313.50.
+Let’s look at the details:
+Visit 1:
+You had an evaluation and management appointment. The original charge was $157.00, but with an uninsured discount applied, it was reduced to $78.50.
+Visit 2:
+This visit included an evaluation, management, and a Pap smear. The initial charge was $470.00. After adjustments of $172.50 and $62.50, the remaining balance for this visit came to $235.00.
+When you add the balances from both visits ($78.50 + $235.00), you get the total amount due of $313.50.
+If you have any questions or need more details, your bill also includes contact information via phone, online, or mail. I’m here to help if you need any further clarification!
+If the question is not related to the insurance documents or comparisons between them, please respond with:
+Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding the insurance plans or summaries of benefits.
+"""
+        comparison = send_to_gemini(signed_content, signed_question, system_prompt)
         
         storage.delete(path1)
         storage.delete(path2)
@@ -269,4 +307,33 @@ def check_questionnaire_status(request):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
+        }, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    try:
+        data = request.data
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        if response:
+            response.name = data.get('name', response.name)
+            response.age = int(data.get('age', response.age))
+            response.pre_existing_conditions = data.get('pre_existing_conditions', response.pre_existing_conditions)
+            response.overall_health = data.get('overall_health', response.overall_health)
+            response.save()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Profile updated successfully'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Profile not found'
+            }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Failed to update profile',
+            'errors': [str(e)]
         }, status=500)
