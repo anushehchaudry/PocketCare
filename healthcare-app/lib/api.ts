@@ -1,4 +1,4 @@
-// API client for interacting with the Django backend
+import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -10,36 +10,38 @@ interface ApiResponse {
 }
 
 function getCsrfTokenFromCookie(): string | null {
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') {
-        return decodeURIComponent(value);
-        }
+  const cookies = document.cookie.split(";");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split("=");
+    if (name === "csrftoken") {
+      return decodeURIComponent(value);
     }
-    return null;
-}
-    
-async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-    const csrfToken = getCsrfTokenFromCookie();
-    
-    // Create a new headers object that we can manipulate
-    const headers = new Headers(options.headers);
-    
-    // Add CSRF token
-    headers.set('X-CSRFToken', csrfToken || '');
-    
-    if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
-    }
-    
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers,
-    });
   }
-  
+  return null;
+}
+
+async function fetchWithAuth(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const csrfToken = getCsrfTokenFromCookie();
+
+  // Create a new headers object that we can manipulate
+  const headers = new Headers(options.headers);
+
+  // Add CSRF token
+  headers.set("X-CSRFToken", csrfToken || "");
+
+  if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return fetch(url, {
+    ...options,
+    credentials: "include",
+    headers,
+  });
+}
 
 export async function login(
   email: string,
@@ -245,3 +247,23 @@ export async function updateProfile(data: any): Promise<ApiResponse> {
     };
   }
 }
+
+export const deleteProfile = async (): Promise<ApiResponse> => {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/delete-profile/`,
+      {
+        method: "POST",
+      }
+    );
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    console.error("Error deleting profile:", error);
+    return { status: "error", message: "Failed to delete profile" };
+  }
+};
