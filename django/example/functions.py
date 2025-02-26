@@ -171,7 +171,7 @@ class EnhancedHIPAADeidentifier:
     
 DEIDENTIFIER = EnhancedHIPAADeidentifier()
     
-def send_to_gemini(formatted_text, user_question, system_prompt):
+def send_to_gemini(formatted_text, user_information, user_question,system_prompt):
     """
     Send formatted text and user question to Gemini API using the official Python client
     
@@ -187,6 +187,7 @@ def send_to_gemini(formatted_text, user_question, system_prompt):
     try:
         formatted_text = signer.unsign(formatted_text)
         user_question = signer.unsign(user_question)
+        user_information = signer.unsign(user_information)
     except:
         raise Exception(f"Security Vulnerability Detected")
     
@@ -200,17 +201,23 @@ def send_to_gemini(formatted_text, user_question, system_prompt):
 
         #deidentify the text
         formatted_text = DEIDENTIFIER.deidentify(formatted_text)
+        user_information = DEIDENTIFIER.deidentify(user_information)
         print(formatted_text)
+        print(user_information)
+
         
         # Construct the prompt
         prompt = f"""{system_prompt} 
 Context:
 {formatted_text}
 
+User Personal Information:
+{user_information}
+
 Question:
 {user_question}
 
-Please analyze the context and answer the question."""
+Please analyze the context, user personal information and answer the question."""
         
         # Generate response
         print("Sending Information")

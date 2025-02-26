@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select"; // Import the custom Select component
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { saveQuestionnaire, checkQuestionnaireStatus } from "@/lib/api";
@@ -18,8 +25,30 @@ const questions = [
     type: "text",
   },
   {
-    id: "overall_health",
-    question: "How would you rate your overall health?",
+    id: "employment_status",
+    question: "What is your employment status?",
+    type: "select",
+    options: [
+      { value: "Employed", label: "Employed" },
+      { value: "Unemployed", label: "Unemployed" },
+      { value: "Student", label: "Student" },
+      { value: "Retired", label: "Retired" },
+      { value: "Other", label: "Other" },
+    ],
+  },
+  {
+    id: "income",
+    question: "What is your annual income? (USD)",
+    type: "number",
+  },
+  {
+    id: "visits_per_year",
+    question: "How many times do you visit the doctor per year? (# of visits)",
+    type: "number",
+  },
+  {
+    id: "medications",
+    question: "Are you currently taking any medications? Specify which ones.",
     type: "text",
   },
 ];
@@ -77,7 +106,10 @@ export default function QuestionnairePage() {
           name: answers.name || "",
           age: parseInt(answers.age || "0"),
           pre_existing_conditions: answers.pre_existing_conditions || "",
-          overall_health: answers.overall_health || "",
+          employment_status: answers.employment_status || "other",
+          income: parseInt(answers.income || "0"),
+          visits_per_year: parseInt(answers.visits_per_year || "0"),
+          medications: answers.medications || "", // Handle medications as a string
         });
 
         if (result.status === "success") {
@@ -107,7 +139,7 @@ export default function QuestionnairePage() {
     }
   };
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (value: any) => {
     setAnswers({
       ...answers,
       [questions[currentQuestion].id]: value,
@@ -148,12 +180,30 @@ export default function QuestionnairePage() {
                 {questions[currentQuestion].question}
               </h2>
               <div className="mt-4">
-                <Input
-                  type={questions[currentQuestion].type}
-                  value={answers[questions[currentQuestion].id] || ""}
-                  onChange={(e) => handleInputChange(e.target.value)}
-                  className="w-full"
-                />
+                {questions[currentQuestion].type === "select" ? (
+                  <Select
+                    value={answers[questions[currentQuestion].id] || ""}
+                    onValueChange={(value) => handleInputChange(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {questions[currentQuestion].options?.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    type={questions[currentQuestion].type}
+                    value={answers[questions[currentQuestion].id] || ""}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    className="w-full"
+                  />
+                )}
               </div>
             </div>
 

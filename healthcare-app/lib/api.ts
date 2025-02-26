@@ -164,7 +164,10 @@ export interface QuestionnaireData {
   name: string;
   age: number;
   pre_existing_conditions: string;
-  overall_health: string;
+  employment_status: string;
+  income: number;
+  visits_per_year: number;
+  medications: string;
 }
 
 export async function saveQuestionnaire(

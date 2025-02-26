@@ -129,8 +129,20 @@ def api_analyze_bill(request):
         formatted_content = format_document_content(doc)
         user_question = request.POST.get('question', '')
 
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        user_information = {
+            'name': response.name,
+            'age': response.age,
+            'pre_existing_conditions': response.pre_existing_conditions,
+            'employment_status': response.employment_status,
+            'income': response.income,
+            'visits_per_year': response.visits_per_year,
+            'medications': response.medications,
+        } if response else {}
+
         signed_content = signer.sign(formatted_content)
         signed_question = signer.sign(user_question) if user_question else None
+        signed_user_information = signer.sign(json.dumps(user_information)) if user_information else None
         analysis = None
         if user_question:
             system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of their medical bills and medical insurance. You have been provided with the full text of the user’s uploaded medical bill as context. Your role is to carefully analyze this context and answer any questions strictly related to the medical bill or medical insurance.
@@ -153,7 +165,7 @@ If you have any questions or need more details, your bill also includes contact 
 If the question is not related to the medical bill or medical insurance, please respond with:
 Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding your medical bill or insurance details.
 """
-            analysis = send_to_gemini(signed_content, signed_question, system_prompt)
+            analysis = send_to_gemini(signed_content, signed_user_information, signed_question, system_prompt)
         
         storage.delete(path)
         
@@ -211,7 +223,20 @@ Focus on providing a clear, structured comparison that highlights the key differ
         
         signed_content = signer.sign(combined_content)
         signed_question = signer.sign(question)
-        
+
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        user_information = {
+            'name': response.name,
+            'age': response.age,
+            'pre_existing_conditions': response.pre_existing_conditions,
+            'employment_status': response.employment_status,
+            'income': response.income,
+            'visits_per_year': response.visits_per_year,
+            'medications': response.medications,
+        } if response else {}
+        signed_user_information = signer.sign(json.dumps(user_information)) if user_information else None
+
+
         system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of insurance plans and summaries of benefits. You have been provided with the full text of two insurance documents as context. Your role is to carefully analyze this context and answer any questions strictly related to the details, differences, or comparisons between these two insurance plans.
 
 When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.
@@ -230,7 +255,7 @@ If you have any questions or need more details, your bill also includes contact 
 If the question is not related to the insurance documents or comparisons between them, please respond with:
 Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding the insurance plans or summaries of benefits.
 """
-        comparison = send_to_gemini(signed_content, signed_question, system_prompt)
+        comparison = send_to_gemini(signed_content, signed_question, signed_user_information, system_prompt)
         
         storage.delete(path1)
         storage.delete(path2)
@@ -252,16 +277,17 @@ Unfortunately I can’t help with that query. I’m happy to answer any other qu
 def save_questionnaire(request):
     try:
         data = request.data
-      
         try:
             response = QuestionnaireResponse.objects.create(
                 user=request.user,
                 name=data.get('name', ''),
                 age=int(data.get('age', 0)),
                 pre_existing_conditions=data.get('pre_existing_conditions', ''),
-                overall_health=data.get('overall_health', '')
+                employment_status=data.get('employment_status', ''),
+                income=int(data.get('income', 0)),
+                visits_per_year=int(data.get('visits_per_year', 0)),
+                medications=data.get('medications', ''),
             )
-            
             return JsonResponse({
                 'status': 'success',
                 'message': 'Questionnaire saved successfully'
@@ -272,7 +298,6 @@ def save_questionnaire(request):
                 'message': f'Failed to create questionnaire: {str(model_error)}',
                 'errors': [str(model_error)]
             }, status=500)
-            
     except Exception as e:
         return JsonResponse({
             'status': 'error',
@@ -293,7 +318,10 @@ def check_questionnaire_status(request):
                     'name': response.name,
                     'age': response.age,
                     'pre_existing_conditions': response.pre_existing_conditions,
-                    'overall_health': response.overall_health
+                    'employment_status': response.employment_status,
+                    'income': response.income,
+                    'visits_per_year': response.visits_per_year,
+                    'medications': response.medications,
                 }
             })
             
@@ -320,7 +348,10 @@ def update_profile(request):
             response.name = data.get('name', response.name)
             response.age = int(data.get('age', response.age))
             response.pre_existing_conditions = data.get('pre_existing_conditions', response.pre_existing_conditions)
-            response.overall_health = data.get('overall_health', response.overall_health)
+            response.employment_status = data.get('employment_status', response.employment_status)
+            response.income = data.get('income', response.income)
+            response.visits_per_year = int(data.get('visits_per_year', response.visits_per_year))
+            response.medications = data.get('medications', response.medications)
             response.save()
             return JsonResponse({
                 'status': 'success',
