@@ -1,4 +1,4 @@
-// API client for interacting with the Django backend
+import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -9,52 +9,38 @@ interface ApiResponse {
   data?: any;
 }
 
-// Store CSRF token in memory
-let storedCsrfToken: string | null = null;
-
-// Function to get CSRF token from cookies or memory
-function getCsrfToken(): string | null {
-  if (storedCsrfToken) return storedCsrfToken;
-
-  const name = "csrftoken";
-  if (document.cookie && document.cookie !== "") {
-    const cookies = document.cookie.split(";");
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === name + "=") {
-        storedCsrfToken = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
+function getCsrfTokenFromCookie(): string | null {
+  const cookies = document.cookie.split(";");
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split("=");
+    if (name === "csrftoken") {
+      return decodeURIComponent(value);
     }
   }
-  return storedCsrfToken;
+  return null;
 }
 
-// Update stored CSRF token from response headers
-function updateCsrfToken(response: Response) {
-  const newToken = response.headers.get("X-CSRFToken");
-  if (newToken) {
-    storedCsrfToken = newToken;
-  }
-}
-
-// Base fetch function with auth credentials
 async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = getCsrfToken();
-  const response = await fetch(url, {
+  const csrfToken = getCsrfTokenFromCookie();
+
+  // Create a new headers object that we can manipulate
+  const headers = new Headers(options.headers);
+
+  // Add CSRF token
+  headers.set("X-CSRFToken", csrfToken || "");
+
+  if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return fetch(url, {
     ...options,
     credentials: "include",
-    headers: {
-      ...options.headers,
-      "X-CSRFToken": token || "",
-    },
+    headers,
   });
-
-  updateCsrfToken(response);
-  return response;
 }
 
 export async function login(
@@ -192,7 +178,10 @@ export interface QuestionnaireData {
   name: string;
   age: number;
   pre_existing_conditions: string;
-  overall_health: string;
+  employment_status: string;
+  income: number;
+  visits_per_year: number;
+  medications: string;
 }
 
 export async function saveQuestionnaire(
@@ -275,3 +264,23 @@ export async function updateProfile(data: any): Promise<ApiResponse> {
     };
   }
 }
+
+export const deleteProfile = async (): Promise<ApiResponse> => {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/delete-profile/`,
+      {
+        method: "POST",
+      }
+    );
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    console.error("Error deleting profile:", error);
+    return { status: "error", message: "Failed to delete profile" };
+  }
+};

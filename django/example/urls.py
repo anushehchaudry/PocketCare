@@ -4,6 +4,7 @@ from example.views import (
     api_login, api_register, api_logout,
     api_analyze_bill, api_initial_analyze_bill, api_compare_insurance,
     save_questionnaire, check_questionnaire_status, update_profile,
+    delete_profile,
 )
 
 urlpatterns = [
@@ -16,4 +17,5 @@ urlpatterns = [
     path('api/save-questionnaire/', save_questionnaire, name='save_questionnaire'),
     path('api/check-questionnaire/', check_questionnaire_status, name='check_questionnaire_status'),
     path('api/update-profile/', update_profile, name='update_profile'),
+     path('api/delete-profile/', delete_profile, name='delete_profile'),
 ]
