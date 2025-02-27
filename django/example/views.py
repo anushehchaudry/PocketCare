@@ -110,6 +110,84 @@ def api_logout(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def api_initial_analyze_bill(request):
+    if 'file' not in request.FILES:
+        return Response({'status': 'error', 'message': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    storage = get_storage_class()(location=settings.MEDIA_ROOT)
+    signer = Signer()
+    
+    uploaded_file = request.FILES['file']
+    name = hashlib.sha256(str(uploaded_file.name).encode()).hexdigest()[:12]
+    secure_filename = f"{name}_{uploaded_file.name}"
+    
+    try:
+        path = storage.save(secure_filename, uploaded_file)
+        file_path = storage.path(path)
+        
+        doc = process_document_ai(file_path)
+        formatted_content = format_document_content(doc)
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        user_information = {
+            'name': response.name,
+            'age': response.age,
+            'pre_existing_conditions': response.pre_existing_conditions,
+            'employment_status': response.employment_status,
+            'income': response.income,
+            'visits_per_year': response.visits_per_year,
+            'medications': response.medications,
+        } if response else {}
+
+        signed_content = signer.sign(formatted_content)
+        signed_user_information = signer.sign(json.dumps(user_information)) if user_information else None
+
+        system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of their medical bills and medical insurance. You have been provided with the full text of the user’s uploaded medical bill as context. Your role is to carefully analyze this context and provide an initial analysis of the bill, including Summary of Charges, Details of Services Billed, What the user’s responsibility Includes, and next steps. Make sure to never mention to the user that information is redacted. Don’t incorporate information you don’t have into the response, like dates.
+
+When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.
+
+Here is an example of what you should include in your analysis: 
+
+Hi there! Let’s go through your medical bill together.
+I know medical bills can feel confusing and overwhelming, but don't worry—you’re not alone! I’m here to walk you through everything, step by step, so you know exactly what this bill means and what to do next.
+Summary of Charges:
+Let’s break down the numbers:
+Total Charges: $36,114.31 – This is the full cost of your medical services before insurance adjustments.
+Insurance Covered: $34,139.31 – Great news! Your insurance has already covered a big chunk of this bill.
+Your Payments So Far: $0.00 – You haven’t made any payments toward this bill yet.
+Your Responsibility: $1,975.00 – This is the final amount you owe after insurance has done its part.
+What Was This Bill For?:
+Type of Service: Surgery at University Hospital Cardiac Prep & Recovery on July 17, 2024 – This means the charges are related to a procedure and the recovery care you received that day.
+Provider: University of Utah Health – The hospital or medical center that provided your care.
+Insurance Provider: Medicare (A & B) – This is your insurance, which helped cover a large portion of your bill.
+Why Do You Still Owe $1,975.00?:
+Even though insurance covered most of the cost, there are a few common reasons you might still have a balance:
+Copayments: A fixed fee that insurance requires for certain services.
+Deductible: The amount you have to pay out-of-pocket before insurance kicks in fully.
+Coinsurance: A percentage of the total bill that you’re responsible for paying after meeting your deductible.
+Next Steps & Payment Options:
+You have a few ways to take care of this bill:
+Online: Pay quickly at the website listed on the bill.
+By Mail: Send a payment to the address listed on the bill
+Need Help? If this amount is a financial burden, you might qualify for assistance. Call the number on your bill to ask about options—they’re there to help!
+Medical bills can be tricky, but I hope this breakdown makes everything clearer for you! If anything doesn’t look right or if you have questions about a specific charge, I’d be happy to help you go through it. Let me know how I can support you!
+"""
+        initial_analysis = send_to_gemini(signed_content, signed_user_information, None, system_prompt)
+        
+        storage.delete(path)
+        
+        return Response({
+            'status': 'success',
+            'analysis': initial_analysis,
+            'content': formatted_content
+        })
+        
+    except Exception as e:
+        if path:
+            storage.delete(path)
+        return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def api_analyze_bill(request):
     if 'file' not in request.FILES:
         return Response({'status': 'error', 'message': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -147,7 +225,7 @@ def api_analyze_bill(request):
         if user_question:
             system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of their medical bills and medical insurance. You have been provided with the full text of the user’s uploaded medical bill as context. Your role is to carefully analyze this context and answer any questions strictly related to the medical bill or medical insurance.
 
-When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.
+When answering, please use a conversational tone that is clear, supportive, and personable. Be sure to explain any details in a way that feels approachable and reassuring, ensuring the user feels understood and well-guided.Make sure to never mention to the user that information is redacted. Don’t incorporate information you don’t have into the response, like dates.
 
 If answering questions about bill details, charges, insurance information, or any related topics, please provide a thorough yet warm explanation using the context provided below that makes the user feel understood and reassured.
 
@@ -160,12 +238,10 @@ Visit 2:
 This visit included an evaluation, management, and a Pap smear. The initial charge was $470.00. After adjustments of $172.50 and $62.50, the remaining balance for this visit came to $235.00.
 When you add the balances from both visits ($78.50 + $235.00), you get the total amount due of $313.50.
 If you have any questions or need more details, your bill also includes contact information via phone, online, or mail. I’m here to help if you need any further clarification!
-
-
 If the question is not related to the medical bill or medical insurance, please respond with:
 Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding your medical bill or insurance details.
 """
-            analysis = send_to_gemini(signed_content, signed_user_information, signed_question, system_prompt)
+        analysis = send_to_gemini(signed_content, signed_user_information, signed_question, system_prompt)
         
         storage.delete(path)
         

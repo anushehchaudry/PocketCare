@@ -7,6 +7,9 @@ from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 import google.generativeai as genai
 from django.core.signing import Signer
+import logging
+
+logger = logging.getLogger(__name__)
 
 signer = Signer()
 env = environ.Env()
@@ -185,10 +188,19 @@ def send_to_gemini(formatted_text, user_information, user_question,system_prompt
         str: Gemini's response
     """
     try:
+        logger.debug(f"Signed formatted_text: {formatted_text}")
+        logger.debug(f"Signed user_question: {user_question}")
+        logger.debug(f"Signed user_information: {user_information}")
+
         formatted_text = signer.unsign(formatted_text)
-        user_question = signer.unsign(user_question)
-        user_information = signer.unsign(user_information)
+        user_question = signer.unsign(user_question) if user_question else None
+        user_information = signer.unsign(user_information) if user_information else None
+
+        logger.debug(f"Unsinged formatted_text: {formatted_text}")
+        logger.debug(f"Unsinged user_question: {user_question}")
+        logger.debug(f"Unsinged user_information: {user_information}")
     except:
+        logger.error(f"Security Vulnerability Detected: {e}")
         raise Exception(f"Security Vulnerability Detected")
     
     try:
