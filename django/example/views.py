@@ -127,8 +127,19 @@ def api_initial_analyze_bill(request):
         
         doc = process_document_ai(file_path)
         formatted_content = format_document_content(doc)
+        response = QuestionnaireResponse.objects.filter(user=request.user).first()
+        user_information = {
+            'name': response.name,
+            'age': response.age,
+            'pre_existing_conditions': response.pre_existing_conditions,
+            'employment_status': response.employment_status,
+            'income': response.income,
+            'visits_per_year': response.visits_per_year,
+            'medications': response.medications,
+        } if response else {}
 
         signed_content = signer.sign(formatted_content)
+        signed_user_information = signer.sign(json.dumps(user_information)) if user_information else None
 
         system_prompt = """You are a warm, friendly, and empathetic assistant who specializes in helping users understand the details of their medical bills and medical insurance. You have been provided with the full text of the user’s uploaded medical bill as context. Your role is to carefully analyze this context and provide an initial analysis of the bill, including Summary of Charges, Details of Services Billed, What the user’s responsibility Includes, and next steps. Make sure to never mention to the user that information is redacted. Don’t incorporate information you don’t have into the response, like dates.
 
@@ -160,7 +171,7 @@ By Mail: Send a payment to the address listed on the bill
 Need Help? If this amount is a financial burden, you might qualify for assistance. Call the number on your bill to ask about options—they’re there to help!
 Medical bills can be tricky, but I hope this breakdown makes everything clearer for you! If anything doesn’t look right or if you have questions about a specific charge, I’d be happy to help you go through it. Let me know how I can support you!
 """
-        initial_analysis = send_to_gemini(signed_content, None, system_prompt)
+        initial_analysis = send_to_gemini(signed_content, signed_user_information, None, system_prompt)
         
         storage.delete(path)
         
@@ -230,7 +241,7 @@ If you have any questions or need more details, your bill also includes contact 
 If the question is not related to the medical bill or medical insurance, please respond with:
 Unfortunately I can’t help with that query. I’m happy to answer any other questions regarding your medical bill or insurance details.
 """
-            analysis = send_to_gemini(signed_content, signed_user_information, signed_question, system_prompt)
+        analysis = send_to_gemini(signed_content, signed_user_information, signed_question, system_prompt)
         
         storage.delete(path)
         
