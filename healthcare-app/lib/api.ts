@@ -123,6 +123,20 @@ export async function register(
   }
 }
 
+export async function initialAnalyzeBill(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetchWithAuth(
+    `${API_BASE_URL}/api/initial-analyze-bill/`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+  return response.json();
+}
+
 export async function analyzeBill(file: File, question: string) {
   const formData = new FormData();
   formData.append("file", file);
