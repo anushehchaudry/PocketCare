@@ -2,6 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+class BillAnalysis(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    file_name = models.CharField(max_length=255)
+    analysis = models.TextField()
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 class QuestionnaireResponse(models.Model):
     EMPLOYMENT_STATUS_CHOICES = [
         ('Employed', 'Employed'),

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { analyzeBill, initialAnalyzeBill } from "@/lib/api";
+import { analyzeBill, initialAnalyzeBill, saveAnalysis } from "@/lib/api"; // Import saveAnalysis
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -32,6 +32,12 @@ export default function UploadBillPage() {
           setInitialAnalysis(result.analysis);
           setInitialAnalysisDone(true);
           setQuestionAnalysis(""); // Clear previous question analysis
+          // Save the analysis in the background
+          await saveAnalysis(
+            uploadedFile.name,
+            result.analysis,
+            result.content
+          );
         } else {
           setError(result.message || "An error occurred");
         }
