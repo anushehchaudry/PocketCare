@@ -121,16 +121,18 @@ export default function DashboardPage() {
               </Card>
             </Link>
 
-            <Link href="/view-bills" className="group">
+            <Link href="/view-docs" className="group">
               <Card className="transition-all duration-200 hover:shadow-md hover:-translate-y-1">
                 <CardContent className="p-6 flex flex-col gap-4">
                   <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                     <Files className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-1">View Bills</h3>
+                    <h3 className="font-semibold text-lg mb-1">
+                      View Documents
+                    </h3>
                     <p className="text-sm text-gray-500">
-                      Access your uploaded medical bills
+                      Access your uploaded documents and analyses
                     </p>
                   </div>
                 </CardContent>

@@ -284,3 +284,70 @@ export const deleteProfile = async (): Promise<ApiResponse> => {
     return { status: "error", message: "Failed to delete profile" };
   }
 };
+
+export async function getDocs(): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/get-docs/`, {
+      method: "GET",
+    });
+
+    const data = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: data.message || "Failed to fetch documents",
+      data: data.data,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: "Failed to fetch documents",
+    };
+  }
+}
+
+export async function saveAnalysis(
+  fileName: string,
+  analysis: string,
+  content: string
+): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/save-analysis/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ fileName, analysis, content }),
+    });
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: "Failed to save analysis",
+    };
+  }
+}
+
+export async function deleteDoc(billId: string): Promise<ApiResponse> {
+  try {
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/api/delete-doc/${billId}/`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const responseData = await response.json();
+    return {
+      status: response.ok ? "success" : "error",
+      message: responseData.message,
+    };
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    return { status: "error", message: "Failed to delete document" };
+  }
+}

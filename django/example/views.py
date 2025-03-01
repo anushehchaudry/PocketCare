@@ -14,9 +14,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 import json
 from django.http import JsonResponse
-from .models import QuestionnaireResponse  # Import the QuestionnaireResponse model
+from .models import BillAnalysis, QuestionnaireResponse  # Import the QuestionnaireResponse model
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.http import FileResponse
 
 
 @ensure_csrf_cookie
@@ -172,6 +173,7 @@ Need Help? If this amount is a financial burden, you might qualify for assistanc
 Medical bills can be tricky, but I hope this breakdown makes everything clearer for you! If anything doesn’t look right or if you have questions about a specific charge, I’d be happy to help you go through it. Let me know how I can support you!
 """
         initial_analysis = send_to_gemini(signed_content, signed_user_information, None, system_prompt)
+
         
         storage.delete(path)
         
@@ -464,3 +466,49 @@ def delete_profile(request):
             'message': 'Failed to delete profile',
             'errors': [str(e)]
         }, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_analysis(request):
+    user = request.user
+    file_name = request.data.get('fileName')
+    analysis = request.data.get('analysis')
+    formatted_content = request.data.get('content')
+    
+    if not file_name or not analysis:
+        return Response({'status': 'error', 'message': 'Invalid data'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    BillAnalysis.objects.create(
+        user=user,
+        file_name=file_name,
+        analysis=analysis,
+        content=formatted_content  # You can add the content if needed
+    )
+    
+    return Response({'status': 'success'})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_docs(request):
+    docs = BillAnalysis.objects.filter(user=request.user)
+    data = [
+        {
+            'id': doc.id,
+            'file_name': doc.file_name,
+            'analysis': doc.analysis,
+            'content': doc.content,
+        }
+        for doc in docs
+    ]
+    return Response({'status': 'success', 'data': data})
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_doc(request, bill_id):
+    try:
+        bill = BillAnalysis.objects.get(id=bill_id, user=request.user)
+        bill.delete()
+        return Response({'status': 'success', 'message': 'Document deleted successfully'})
+    except BillAnalysis.DoesNotExist:
+        return Response({'status': 'error', 'message': 'Document not found'}, status=404)
+    
