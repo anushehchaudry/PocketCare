@@ -62,7 +62,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
 
 ## Team
 
-Built for Stanford CS 194 (Software Project), Winter 2025, by
+Built by
 **Neha Vinjapuri · Sarah Barragan · Anusheh Chaudry · Aakriti Lakshmanan**.
 
-*PocketCare is a student project and is not medical, legal, or financial advice.*
+*PocketCare is a prototype and is not medical, legal, or financial advice.*
