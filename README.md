@@ -2,7 +2,7 @@
 
 **A personal assistant for the paperwork side of healthcare.** You upload a medical bill or an insurance plan and PocketCare explains it in plain, friendly language. You can then ask follow-up questions about your own documents.
 
-**Live demo:** https://win25-team36.vercel.app/
+**Try it:** run the Django API and the Next.js front end locally (see below). The front end was deployed to Vercel during development, but the API isn't hosted, so that deployment can't sign in.
 
 ![PocketCare screenshot](<Screenshot 2025-01-21 at 10.00.55 PM.png>)
 
@@ -18,12 +18,12 @@
 
 ```
 PDF upload ──► Google Document AI (OCR + layout)
-           ──► HIPAA de-identification (Microsoft Presidio + custom recognizers)
+           ──► de-identification (Microsoft Presidio + custom recognizers)
            ──► Gemini 1.5 Flash with task-specific system prompts
            ──► structured explanation saved to the user's documents
 ```
 
-Personal identifiers (names, account numbers, and so on) are stripped **before** any text reaches the language model.
+Bill text is de-identified (names, account numbers, and so on removed) **before** it reaches the language model. Raw documents do pass through Document AI for OCR first, and follow-up questions are sent to the model as written, so use sample bills, not real ones.
 
 ## Tech stack
 
@@ -32,7 +32,7 @@ Personal identifiers (names, account numbers, and so on) are stripped **before**
 | Frontend | Next.js 14, React, TypeScript, Tailwind CSS, shadcn/ui |
 | Backend | Django 4 + Django REST Framework (session auth, CSRF) |
 | AI / document processing | Google Document AI, Gemini 1.5 Flash, Microsoft Presidio |
-| Hosting | Vercel |
+| Hosting | Vercel (front end, during development) |
 
 ## Repository layout
 
